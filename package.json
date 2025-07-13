@@ -1,0 +1,44 @@
+{
+  "name": "healthctx",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "sh scripts/dev.sh",
+    "dev:frontend": "next dev --turbopack",
+    "dev:backend": "convex dev",
+    "convex": "convex",
+    "build": "next build",
+    "start": "next start",
+    "check": "biome check .",
+    "check:ci": "biome ci .",
+    "check:fix": "biome check --fix .",
+    "fix": "biome check --fix .",
+    "format": "biome format --write .",
+    "lint": "biome lint . && turbo lint"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.19",
+    "@biomejs/biome": "^2.2.2",
+    "@clerk/clerk-react": "^5.43.1",
+    "@clerk/nextjs": "^6.31.4",
+    "@convex-dev/agent": "^0.2.5",
+    "@convex-dev/workpool": "^0.2.18",
+    "ai": "^5.0.22",
+    "convex": "^1.26.1",
+    "next": "15.5.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2"
+  },
+  "packageManager": "bun@1.1.25"
+}
