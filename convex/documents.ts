@@ -1,10 +1,10 @@
 import { openai } from "@ai-sdk/openai";
-import { Agent } from "@convex-dev/agent";
 import { vOnCompleteArgs, Workpool } from "@convex-dev/workpool";
+import { generateObject } from "ai";
 import { v } from "convex/values";
-import { z } from "zod/v3";
+import { z } from "zod";
 import { components, internal } from "./_generated/api";
-import { internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 
 const workerPool = new Workpool(components.documentProcessing, {
   maxParallelism: 10,
@@ -19,6 +19,38 @@ export const generateUploadUrl = mutation({
 
     const url = await ctx.storage.generateUploadUrl();
     return url;
+  },
+});
+
+export const listDocuments = query({
+  args: {
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.tokenIdentifier) {
+      throw new Error("Unauthorized");
+    }
+
+    let userId = args.userId;
+
+    if (!userId) {
+      userId = (
+        await ctx.db
+          .query("users")
+          .withIndex("by_identity", (q) => q.eq("identity", identity.tokenIdentifier))
+          .unique()
+      )?._id;
+    }
+
+    if (!userId) {
+      return null;
+    }
+
+    return await ctx.db
+      .query("documents")
+      .withIndex("by_user", (q) => q.eq("user", userId))
+      .collect();
   },
 });
 
@@ -56,6 +88,7 @@ export const processDocument = mutation({
       { documentId: id },
       {
         onComplete: internal.documents.analyzeDocumentComplete,
+        context: { documentId: id },
         retry: { maxAttempts: 5, initialBackoffMs: 250, base: 2 },
       },
     );
@@ -72,26 +105,31 @@ export const updateDocumentInfo = internalMutation({
     ),
     summary: v.optional(v.string()),
     processingStartedAt: v.optional(v.number()),
+    classification: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const document = await ctx.db.get(args.documentId);
     if (!document) {
       throw new Error("Document not found");
     }
-
-    await ctx.db.patch(args.documentId, {
-      status: args.status,
-      summary: args.summary,
-      processingStartedAt: args.processingStartedAt,
-    });
+    const updates: any = {};
+    if (args.status) {
+      updates.status = args.status;
+    }
+    if (args.summary) {
+      updates.summary = args.summary;
+    }
+    if (args.processingStartedAt) {
+      updates.processingStartedAt = args.processingStartedAt;
+    }
+    if (args.classification) {
+      updates.classification = args.classification;
+    }
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+    await ctx.db.patch(args.documentId, updates);
   },
-});
-
-export const documentClassifierAgent = new Agent(components.agent, {
-  name: "Document Classifier Agent",
-  instructions:
-    "Your job is to classify a given document into one of the following categories: 'non-medical', 'finance', 'insurance', 'other'.",
-  languageModel: openai("gpt-5"),
 });
 
 export const getDocument = internalQuery({
@@ -120,56 +158,72 @@ export const analyzeDocument = internalAction({
 
     const documentUrl = await ctx.storage.getUrl(document?.data!);
 
-    const result = await documentClassifierAgent.generateObject(
-      ctx,
-      {
-        userId: document?.user,
-      },
-      {
-        schema: z.discriminatedUnion("category", [
-          z.object({
-            category: z.literal("non-medical"),
-            summary: z.string(),
-          }),
+    const result = await generateObject({
+      model: openai("gpt-5-mini"),
+      schema: z.object({
+        classification: z.union([
           z.object({
             category: z.literal("testresults"),
             testType: z.union([
-              z.literal("bloodwork"),
+              z.literal("labs"),
               z.literal("imaging"),
               z.literal("physical"),
               z.literal("functional"),
+              z.literal("other"),
             ]),
           }),
           z.object({
-            category: z.literal("visit-summary"),
+            category: z.literal("clinical-notes"),
+            type: z.union([
+              z.literal("visit-summary"),
+              z.literal("discharge-instructions"),
+              z.literal("prescription"),
+              z.literal("referral"),
+              z.literal("lab-order"),
+              z.literal("medical-history"),
+              z.literal("other"),
+            ]),
           }),
           z.object({
-            category: z.literal("insurance"),
+            category: z.literal("insurance-document"),
+          }),
+          z.object({
+            category: z.literal("non-medical"),
+            explanation: z.string().describe("brief sentence on why this is not a medical document. keep it short."),
           }),
         ]),
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Classify the attached document" },
-              {
-                type: "file",
-                data: new URL(documentUrl!),
-                mediaType: document?.type === "pdf" ? "application/pdf" : "image/jpeg",
-              },
-            ],
-          },
-        ],
-      },
-    );
+      }),
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a document classifier. You are given a document and you need to classify it into one of the categories listed in the output schema. If the document does not fit into any of the categories, return the category 'non-medical'.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Classify the attached document" },
+            {
+              type: "file",
+              data: new URL(documentUrl!),
+              mediaType: document?.type === "pdf" ? "application/pdf" : "image/jpeg",
+            },
+          ],
+        },
+      ],
+    });
 
-    console.log(result);
+    await ctx.runMutation(internal.documents.updateDocumentInfo, {
+      documentId: args.documentId,
+      classification: result.object?.classification,
+    });
   },
 });
 
 export const analyzeDocumentComplete = internalMutation({
   args: vOnCompleteArgs(v.object({ documentId: v.id("documents") })),
   handler: async (ctx, { context, result }) => {
+    console.log("COMPLETE");
     await ctx.db.patch(context.documentId, {
       status: result.kind === "success" ? "completed" : result.kind,
       error: result.kind === "failed" ? result.error : undefined,

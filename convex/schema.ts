@@ -28,6 +28,7 @@ export default defineSchema({
       v.literal("canceled"),
     ),
     error: v.optional(v.string()),
+    classification: v.optional(v.any()),
     processingStartedAt: v.optional(v.number()),
     processingCompletedAt: v.optional(v.number()),
   })
