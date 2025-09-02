@@ -1,16 +1,17 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI agents when working with code in this repository.
 
 ## Commands
 
-- **Development**: `bun dev` - Runs both frontend and backend concurrently using the custom dev script
-- **Frontend only**: `bun dev:frontend` - Runs Next.js development server with Turbopack
-- **Backend only**: `bun dev:backend` - Runs Convex development server
+This project uses Bun as the JavaScript runtime and package manager. If you want to run any command with `node` or `npm`, ALWAYS use `bun` instead.
+
+- **Development**: `bun dev` - Runs both frontend and backend concurrently using the custom dev script.
+  Logs are written to `dev.log`, use this file or `bun logs` to view recent output.
 - **Build**: `bun build` - Builds Next.js application for production
-- **Code quality**: 
+- **Code quality**:
   - `bun check` - Runs Biome checks (linting and formatting)
-  - `bun check:fix` or `bun fix` - Auto-fixes Biome issues
+  - `bun fix` - Auto-fixes Biome issues
   - `bun format` - Formats code with Biome
   - `bun lint` - Runs both Biome and Turbo linting
 
@@ -32,9 +33,7 @@ This is a health context application (HealthCtx) built with:
 
 **Backend Structure**:
 - `/convex` - All Convex functions and schema
-- `schema.ts` - Database schema (currently has `numbers` table)
-- `agent.ts` - AI chat functionality with thread management
-- `myFunctions.ts` - Additional Convex functions
+- `schema.ts` - Database schema
 - Uses Clerk for authentication with user identity checks
 
 ### Important Convex Guidelines
@@ -50,7 +49,7 @@ Follow the comprehensive Convex rules in `.cursor/rules/convex_rules.mdc`:
 
 The application uses Convex Agent for AI chat functionality:
 - Thread-based conversations with user isolation
-- OpenAI GPT-4o model integration
+- OpenAI GPT-5 model integration
 - Authentication checks ensure users only access their threads
 - Pagination support for message history
 

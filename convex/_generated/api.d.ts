@@ -9,6 +9,7 @@
  */
 
 import type * as chat from "../chat.js";
+import type * as documents_classifiction from "../documents/classifiction.js";
 import type * as documents from "../documents.js";
 import type * as users from "../users.js";
 
@@ -28,6 +29,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   chat: typeof chat;
+  "documents/classifiction": typeof documents_classifiction;
   documents: typeof documents;
   users: typeof users;
 }>;

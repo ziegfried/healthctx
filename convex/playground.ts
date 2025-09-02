@@ -1,6 +1,5 @@
 // import { definePlaygroundAPI } from "@convex-dev/agent-playground";
 // import { components } from "./_generated/api";
-// import { chatAgent } from "./agent";
 
 // /**
 //  * Here we expose the API so the frontend can access it.
@@ -18,5 +17,5 @@
 //   generateText,
 //   fetchPromptContext,
 // } = definePlaygroundAPI(components.agent, {
-//   agents: [chatAgent],
+//   agents: [],
 // });

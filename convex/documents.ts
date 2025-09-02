@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { z } from "zod";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { classificationSchema } from "./documents/classifiction";
 
 const workerPool = new Workpool(components.documentProcessing, {
   maxParallelism: 10,
@@ -161,37 +162,7 @@ export const analyzeDocument = internalAction({
     const result = await generateObject({
       model: openai("gpt-5-mini"),
       schema: z.object({
-        classification: z.union([
-          z.object({
-            category: z.literal("testresults"),
-            testType: z.union([
-              z.literal("labs"),
-              z.literal("imaging"),
-              z.literal("physical"),
-              z.literal("functional"),
-              z.literal("other"),
-            ]),
-          }),
-          z.object({
-            category: z.literal("clinical-notes"),
-            type: z.union([
-              z.literal("visit-summary"),
-              z.literal("discharge-instructions"),
-              z.literal("prescription"),
-              z.literal("referral"),
-              z.literal("lab-order"),
-              z.literal("medical-history"),
-              z.literal("other"),
-            ]),
-          }),
-          z.object({
-            category: z.literal("insurance-document"),
-          }),
-          z.object({
-            category: z.literal("non-medical"),
-            explanation: z.string().describe("brief sentence on why this is not a medical document. keep it short."),
-          }),
-        ]),
+        classification: classificationSchema,
       }),
       messages: [
         {
